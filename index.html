@@ -1,0 +1,425 @@
+﻿<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Clawbot Simulator</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/2.4.0/svg.min.js"></script>
+<style>
+.drawing > svg {
+  background-color: white;
+  border: 1px solid #aaa;
+}
+
+#side > svg {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  position: relative;
+}
+
+html {
+  background-color: #eee;
+  margin: 40px;
+}
+</style>
+  </head>
+  <body>
+    <div id="side" class="drawing"></div>
+    <div id="top" class="drawing"></div>
+    <script>
+// sim params
+var simSpeedPerCmd = 1;
+var simSpeedSmoothing = 0.1;
+var simTurnPerCmd = 0.3;
+var simArmSmoothing = 0.1;
+var simArmSpeedMax = 60;
+var simArmGain = 1;
+var simFingerSmoothing = 0.1;
+var simFingerSpeedMax = 200;
+var simFingerGain = 3;
+
+// colours
+var colorBotWheel = '#085';
+var colorBotWheelBg = '#eff';
+var colorBotMetal = '#555';
+var colorBotMetalBg = '#fee';
+var colorBotFinger = '#308';
+var colorBotFingerBg = '#aef';
+
+// sim states
+var simTimePrev = 0;
+var botVLeft = 0;
+var botVRight = 0;
+var botVArm = 0;
+var botVFinger = 0;
+var botArmTarget = -60;
+var botFingerTarget = 0;
+
+// Dimensions
+var fieldSize = 800;
+
+// sim output
+var botX = fieldSize / 2;
+var botY = fieldSize / 2;
+var botHeading = 90;
+var botArmAngle = -45;
+var botFingerAngle = 70;
+
+var botWidth = 80;
+var botHeight = botWidth;
+var botWheelThickness = 7;
+var botWheelDiameter = 20;
+var botWheelSeparation = 4;
+var botLBarWidth = 5;
+var botTowerWidth = 20;
+var botTowerSpan = 20;
+var botArmLength = 80;
+var botArmThickness = 20;
+var botClawBackWidth = 40;
+var botClawBackLength = 60;
+var botFingerThickness = 8;
+var botFingerLength = 70;
+var botFingerSeparation = 20;
+
+var botSideThickness = 8;
+var botArmSideThickness = 8;
+
+var sideWidth = 200;
+var sideHeight = 200;
+var sideDraw = SVG('side')
+  .size(sideWidth, sideHeight)
+  .spof()
+  .group()
+  .transform({
+    scaleY: -1,
+    cy: sideHeight / 2
+  });
+var sideBot = sideDraw
+  .group()
+  .move(0, 0);
+
+sideBot
+  .rect(botTowerWidth, botHeight)
+  .move(botLBarWidth, 0)
+  .stroke(colorBotMetal)
+  .fill(colorBotMetalBg);
+
+var sideClaw = sideBot
+  .group();
+
+sideClaw
+  .rect(botClawBackLength, botSideThickness)
+  .move(0, 0)
+  .stroke(colorBotMetal)
+  .fill(colorBotMetalBg);
+
+var sideFinger = sideClaw
+  .rect(botFingerLength, botSideThickness)
+  .move(botClawBackLength, 0)
+  .stroke(colorBotFinger)
+  .fill(colorBotFingerBg);
+
+var sideArm = sideBot
+  .rect(botArmLength, botArmSideThickness)
+  .move(0, botHeight - botArmSideThickness)
+  .stroke(colorBotMetal)
+  .fill(colorBotMetalBg);
+
+var sideWheel = sideBot
+  .defs()
+  .circle(botWheelDiameter)
+  .stroke(colorBotWheel)
+  .fill(colorBotWheelBg);
+
+sideBot
+  .use(sideWheel)
+  .move(0, 0);
+sideBot
+  .use(sideWheel)
+  .move(botWidth - botWheelDiameter, 0);
+sideBot
+  .rect(botWidth, botSideThickness)
+  .move(0, botWheelDiameter / 2 - botSideThickness / 2)
+  .stroke(colorBotMetal)
+  .fill(colorBotMetalBg);
+
+var draw = SVG('top')
+  .size(fieldSize, fieldSize)
+  .spof();
+
+var bot = draw
+  .group();
+
+var botX1 = -botWidth / 2;
+var botX2 = botX1 + botWheelSeparation;
+var botX3 = botX2 + botWheelThickness;
+var botX4 = botX3 + botWheelSeparation;
+var botX1r = -botX1;
+var botX2r = -botX2;
+var botX3r = -botX3;
+var botX4r = -botX4;
+var botY1 = botHeight / 2;
+var botY2 = botY1 - botLBarWidth;
+var botY3 = botY2 - botTowerWidth;
+var botY4 = botY3 - botLBarWidth;
+var botY5 = -botHeight / 2;
+
+//bot.rect(0, 0, 100, 100);
+
+bot
+  .line(botX1, botY5, botX1, botY1)
+  .stroke(colorBotMetal)
+  .fill(colorBotMetalBg);
+bot
+  .line(botX1r, botY5, botX1r, botY1)
+  .stroke(colorBotMetal)
+  .fill(colorBotMetalBg);
+bot
+  .line(botX4, botY5, botX4, botY1)
+  .stroke(colorBotMetal)
+  .fill(colorBotMetalBg);
+bot
+  .line(botX4r, botY5, botX4r, botY1)
+  .stroke(colorBotMetal)
+  .fill(colorBotMetalBg);
+
+var botWheel = bot
+  .defs()
+  .rect(botWheelThickness, botWheelDiameter)
+  .stroke(colorBotWheel)
+  .fill(colorBotWheelBg);
+bot
+  .use(botWheel)
+  .move(botX2, botY5);
+bot
+  .use(botWheel)
+  .move(botX3r, botY5);
+bot
+  .use(botWheel)
+  .move(botX2, botY1 - botWheelDiameter);
+bot
+  .use(botWheel)
+  .move(botX3r, botY1 - botWheelDiameter);
+
+var botLBar = bot
+  .defs()
+  .rect(botWidth, botLBarWidth)
+  .stroke(colorBotMetal)
+  .fill(colorBotMetalBg);
+bot
+  .use(botLBar)
+  .move(botX1, botY2);
+bot
+  .use(botLBar)
+  .move(botX1, botY4);
+
+var botArm = bot
+  .rect(botArmThickness, botArmLength)
+  .stroke(colorBotMetal)
+  .fill(colorBotMetalBg)
+  .move(-botArmThickness / 2, botY1 - botArmLength);
+
+var botClaw = bot
+  .group()
+  .scale(1, -1);
+var botFinger = bot
+  .defs()
+  .rect(botFingerThickness, botFingerLength)
+  .stroke(colorBotFinger)
+  .fill(colorBotFingerBg);
+var botFingerX = botFingerSeparation / 2;
+var botFingerY = botClawBackLength - botFingerThickness;
+var botFingerLeft = botClaw
+  .use(botFinger)
+  .move(-botFingerX - botFingerThickness / 2, botFingerY);
+var botFingerRight = botClaw
+  .use(botFinger)
+  .move(botFingerX - botFingerThickness / 2, botFingerY);
+var botClawBack = botClaw
+  .rect(botClawBackWidth, botClawBackLength)
+  .stroke(colorBotMetal)
+  .fill(colorBotMetalBg)
+  .move(-botClawBackWidth / 2, 0);
+
+updateDrawing();
+
+function updateDrawing() {
+  bot
+    .transform({
+      x: botX,
+      y: botY
+    })
+    .transform({
+      rotation: botHeading,
+      cx: 0,
+      cy: botY1
+    });
+  botArm
+    .transform({
+      scaleY: cosdeg(botArmAngle),
+      cy: botY1,
+      relative: false
+    });
+  botClaw
+    .translate(0, botY1 - cosdeg(botArmAngle) * botArmLength);
+  botFingerLeft
+    .rotate(botFingerAngle, -botFingerSeparation / 2, botFingerY);
+  botFingerRight
+    .rotate(-botFingerAngle, botFingerSeparation / 2, botFingerY);
+
+  sideArm
+    .rotate(botArmAngle, botArmSideThickness / 2, botHeight - botArmSideThickness / 2);
+  sideClaw
+    .move(botArmLength * cosdeg(botArmAngle), botArmLength * sindeg(botArmAngle) + botHeight - botArmSideThickness);
+  sideFinger
+    .transform({
+      scaleX: cosdeg(botFingerAngle),
+      cx: botClawBackLength
+    });
+}
+
+var vexRT = {
+  ch1: 0,
+  ch2: 0,
+  ch3: 0,
+  ch4: 0,
+  btn5U: 0,
+  btn5D: 0,
+  btn6U: 0,
+  btn6D: 0,
+  btn7U: 0,
+  btn7D: 0,
+  btn7L: 0,
+  btn7R: 0,
+  btn8U: 0,
+  btn8D: 0,
+  btn8L: 0,
+  btn8R: 0
+};
+var socket = io('http://localhost');
+socket.on('joydata', function (data) {
+  Object.keys(data).forEach(function (key) {
+    vexRT[key] = data[key];
+  });
+});
+var keyStates = {};
+function keyState(code) {
+  return !!keyStates[code];
+}
+window.addEventListener('keydown', function (event) {
+  keyStates[event.code] = true;
+});
+window.addEventListener('keyup', function (event) {
+  keyStates[event.code] = false;
+});
+
+var isArcade = false;
+
+function sqr(x) {
+  return x * x;
+}
+
+function deadband(x, threshold) {
+  return Math.abs(x) < threshold ? 0 : x;
+}
+
+function cosdeg(x) {
+  return Math.cos(x / 180 * Math.PI);
+}
+
+function sindeg(x) {
+  return Math.sin(x / 180 * Math.PI);
+}
+
+function clip(x, lower, upper) {
+  if (x < lower) return lower;
+  if (x > upper) return upper;
+  return x;
+}
+
+function update(dt) {
+  var time = Date.now();
+  dt = clip((time - simTimePrev) / 1000, 0, 0.1);
+  simTimePrev = time;
+
+  var mLeft = 0;
+  var mRight = 0;
+  if (isArcade) {
+    var power = sqr(vexRT.ch3) / 127 * Math.sign(vexRT.ch3);
+    var turn = sqr(vexRT.ch4) / 127 * Math.sign(vexRT.ch4);
+    mLeft = power + turn;
+    mRight = power - turn;
+  } else {
+    mLeft = sqr(vexRT.ch3) / 127 * Math.sign(vexRT.ch3);
+    mRight = sqr(vexRT.ch2) / 127 * Math.sign(vexRT.ch2);
+  }
+  mLeft = deadband(mLeft, 20);
+  mRight = deadband(mRight, 20);
+
+  if (keyState("ArrowUp") || keyState("KeyW")) {
+    mLeft = mRight = 127;
+  }
+  if (keyState("ArrowDown") || keyState("KeyS")) {
+    mLeft = mRight = -127;
+  }
+  if (keyState("ArrowLeft") || keyState("KeyA")) {
+    mLeft -= 127;
+    mRight += 127;
+  }
+  if (keyState("ArrowRight") || keyState("KeyD")) {
+    mLeft += 127;
+    mRight -= 127;
+  }
+  mLeft = clip(mLeft, -127, 127);
+  mRight = clip(mRight, -127, 127);
+
+  botVLeft += (mLeft * simSpeedPerCmd - botVLeft) / simSpeedSmoothing * dt;
+  botVRight += (mRight * simSpeedPerCmd - botVRight) / simSpeedSmoothing * dt;
+
+  var botSpeed = (botVLeft + botVRight) / 2;
+  botX += botSpeed * sindeg(botHeading) * dt;
+  botY -= botSpeed * cosdeg(botHeading) * dt;
+  botX = clip(botX, 0, fieldSize);
+  botY = clip(botY, 0, fieldSize);
+  botHeading += (botVLeft - botVRight) * simTurnPerCmd * dt;
+
+  var armSpeed = 0;
+  if (vexRT.btn8U || keyState("KeyI")) botArmTarget = 80;
+  if (vexRT.btn8D || keyState("KeyO")) botArmTarget = -60;
+  if (vexRT.btn6U || vexRT.btn6D || keyState("Digit9") || keyState("Digit0")) {
+    armSpeed = (!!vexRT.btn6U + keyState("Digit9") - !!vexRT.btn6D - keyState("Digit0")) * simArmSpeedMax;
+    botArmTarget = botArmAngle;
+  } else {
+    armSpeed = (botArmTarget - botArmAngle) * simArmGain;
+    armSpeed = clip(armSpeed, -simArmSpeedMax, simArmSpeedMax);
+  }
+  botVArm += (armSpeed - botVArm) / simArmSmoothing * dt;
+  botArmAngle += botVArm * dt;
+  botArmAngle = clip(botArmAngle, -60, 80);
+
+  var fingerSpeed = 0;
+  if (vexRT.btn7L || keyState("KeyE")) botFingerTarget = 80;
+  if (vexRT.btn7R || keyState("KeyR")) botFingerTarget = 0;
+  if (vexRT.btn5U || vexRT.btn5D || keyState("Digit1") || keyState("Digit2")) {
+    fingerSpeed = (!!vexRT.btn5U + keyState("Digit1") - !!vexRT.btn5D - keyState("Digit2")) * simFingerSpeedMax;
+    botFingerTarget = botFingerAngle;
+  } else {
+    fingerSpeed = (botFingerTarget - botFingerAngle) * simFingerGain;
+    fingerSpeed = clip(fingerSpeed, -simFingerSpeedMax, simFingerSpeedMax);
+  }
+  botVFinger += (fingerSpeed - botVFinger) / simFingerSmoothing * dt;
+  botFingerAngle += botVFinger * dt;
+  botFingerAngle = clip(botFingerAngle, 0, 80);
+
+  updateDrawing();
+  setTimeout(update, 20);
+}
+update();
+    </script>
+  </body>
+</html>
