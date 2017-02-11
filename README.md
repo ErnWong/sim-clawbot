@@ -14,7 +14,7 @@
 
 1. In your favourite command line, `cd` into the sim-clawbot repo directory.
 2. Connect the Vex Cortex to the Joystick, and connect the Joystick to the computer.
-3. To test and make sure the robot's program works, type `pros terminal` and fiddle around with the joystick. The terminal's readings should respond to your actions. Now close this `pros terminal` by pressing <Ctr-C>.
-4. Next, we're going to pipe this output (you just saw) into a new server. But, first, see which one works: `node server.js` or `nodejs server.js`. Then, close the server by pressing <Ctr-C>. Now type `pros terminal | node server.js` or `pros terminal | nodejs server.js` (whichever one works).
+3. To test and make sure the robot's program works, type `pros terminal` and fiddle around with the joystick. The terminal's readings should respond to your actions. Now close this `pros terminal` by pressing Control-C.
+4. Next, we're going to pipe this output (you just saw) into a new server. But, first, see which one works: `node server.js` or `nodejs server.js`. Then, close the server by pressing Control-C. Now type `pros terminal | node server.js` or `pros terminal | nodejs server.js` (whichever one works).
 5. Open up your web browser and load `http://localhost:80`
 6. If everything works well, enjoy!
