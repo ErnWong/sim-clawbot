@@ -4,7 +4,6 @@
   "author": "Ernest Wong <ewon521@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "socket.io": "1.4.x",
-    "serialport": "4.0.x"
+    "socket.io": "1.4.x"
   }
 }

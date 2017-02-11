@@ -1,6 +1,5 @@
 var app = require('http').createServer(handler)
 var io = require('socket.io')(app);
-var SerialPort = require('serialport');
 var readline = require('readline');
 var fs = require('fs');
 
@@ -47,28 +46,4 @@ io.on('connection', function (socket) {
     socket.emit('joydata', joyData);
   }
   rl.on('line', pushdata);
-  /*
-  SerialPort.list(function (err, ports) {
-    if (err) {
-      console.log(err);
-    }
-    if (!ports.length) {
-      console.log("no serial port detected");
-      return;
-    }
-    var port = new SerialPort(ports[0].comName, {
-      parser: SerialPort.parsers.readline('\r\n')
-    });
-    port.on('open', function() {
-      console.log('port opened:', ports[0].comName);
-    });
-    port.on('disconnect', function() {
-      console.log('port disconnected');
-    });
-    port.on('close', function() {
-      console.log('port closed');
-    });
-    port.on('data', pushdata);
-  });
-  */
 });
