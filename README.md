@@ -18,3 +18,9 @@
 4. Next, we're going to pipe this output (you just saw) into a new server. But, first, see which one works: `node server.js` or `nodejs server.js`. Then, close the server by pressing Control-C. Now type `pros terminal | node server.js` or `pros terminal | nodejs server.js` (whichever one works).
 5. Open up your web browser and load `http://localhost:80`
 6. If everything works well, enjoy!
+
+## Note
+
+Once you have downloaded a PROS program to a cortex, you may realise that RobotC will spill out errors when you try to download a RobotC code back into the cortex. That's expected, and that's okay. You'll just need to do an extra step:
+
+To return back to using RobotC, you'll need to re-upload the cortex's firmware by "updating" it. As of writing, this can be found in Menu > Robot > Download Firmware > Automatically Update Vex Cortex. Make sure you plug in your cortex to the computer directly, using an orange USB A to A.
